@@ -54,6 +54,6 @@ class User extends Authenticatable implements FilamentUser
 
     public function canAccessFilament(Panel $panel): bool
     {
-        return $this->name == 'alex1';
+        return true;
     }
 }
