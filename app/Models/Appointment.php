@@ -29,4 +29,9 @@ class Appointment extends Model
     {
         return $this->belongsTo(Client::class);
     }
+    
+    public function scopePaid($query)
+    {
+        return $query->whereNotNull('price')->where('price', '>', 0);
+    }
 }

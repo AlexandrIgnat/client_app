@@ -67,6 +67,51 @@ class AppointmentResource extends Resource
     public static function table(Table $table): Table
     {
         return $table
+               ->header(function (Table $table) {
+            // Получаем состояние фильтров через Livewire компонент
+            $livewire = $table->getLivewire();
+            $filterState = $livewire->tableFilters;
+
+            // Получаем выбранный месяц
+            $selectedMonth = $filterState['month']['value'] ?? now()->format('Y-m');
+            $date = Carbon::createFromFormat('Y-m', $selectedMonth);
+
+            // Получаем базовый запрос
+            $baseQuery = Appointment::query();
+
+            // Применяем фильтр месяца если он есть
+            if (isset($filterState['month']['value'])) {
+                $baseQuery->whereYear('start_time', $date->year)
+                         ->whereMonth('start_time', $date->month);
+            }
+
+            // Считаем доход
+            $monthlyIncome = $baseQuery->sum('price');
+
+            if (isset($filterState['month']['value'])) {
+                return new HtmlString(<<<HTML
+                    <div class="flex  align-center items-center justify-center gap-4 p-4 rounded-lg shadow mb-4 text-sm">
+                        <div class="px-4 py-2 bg-amber-50 rounded border border-amber-100">
+                            <div class=" font-medium text-amber-800">Выбранный месяц</div>
+                            <div class=" font-bold text-amber-600">{$date->translatedFormat('F Y')}</div>
+                        </div>
+                        <div class="px-4 py-2 bg-green-50 rounded border border-green-100">
+                            <div class="font-medium text-green-800">Доход за месяц</div>
+                            <div class="font-bold text-green-600">{$monthlyIncome} ₽</div>
+                        </div>
+                    </div>
+                HTML);
+            } else {
+                 return new HtmlString(<<<HTML
+                    <div class="flex align-center items-center justify-center gap-4 p-4 rounded-lg shadow mb-4 text-sm">
+                        <div class="px-4 py-2 bg-green-50 rounded border border-green-100">
+                            <div class="font-medium text-green-800">Всего заработано</div>
+                            <div class="font-bold text-green-600">{$monthlyIncome} ₽</div>
+                        </div>
+                    </div>
+                HTML);
+            }
+        })
             ->columns([
 
                     Tables\Columns\TextColumn::make('start_time')

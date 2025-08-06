@@ -29,7 +29,6 @@ class Admin1000PanelProvider extends PanelProvider
             ->id('admin1000')
             ->path('admin1000')
             ->login()
-	    //->registration() 
             ->colors([
                 'primary' => Color::Amber,
             ])
@@ -64,38 +63,5 @@ class Admin1000PanelProvider extends PanelProvider
                 \App\Filament\Resources\AppointmentResource::class,
                 \App\Filament\Resources\ClientResource::class,
             ]);
-/**
-    return $panel
-        ->id('admin1000')
-        ->path('admin1000')
-        ->login() // Явно включаем страницу входа
-        ->passwordReset() // Включаем сброс пароля
-        ->emailVerification() // Включаем верификацию email
-        ->profile() // Включаем профиль пользователя
-        ->colors([
-            'primary' => Color::Amber,
-        ])
-        ->authGuard('web') // Явно указываем guard
-        ->authPasswordBroker('users') // Указываем брокер паролей
-        ->discoverResources(in: app_path('Filament/Resources'), for: 'App\\Filament\\Resources')
-        ->discoverPages(in: app_path('Filament/Pages'), for: 'App\\Filament\\Pages')
-        ->pages([
-            Pages\Dashboard::class,
-        ])
-        ->middleware([
-            EncryptCookies::class,
-            AddQueuedCookiesToResponse::class,
-            StartSession::class,
-            AuthenticateSession::class,
-            ShareErrorsFromSession::class,
-            VerifyCsrfToken::class,
-            SubstituteBindings::class,
-            DisableBladeIconComponents::class,
-            DispatchServingFilamentEvent::class,
-        ])
-        ->authMiddleware([
-            Authenticate::class,
-        ]);
-*/
     }
 }
