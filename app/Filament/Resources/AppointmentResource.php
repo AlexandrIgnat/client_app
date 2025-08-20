@@ -172,7 +172,6 @@ class AppointmentResource extends Resource
                         return $months;
                     })
                     // ->default(Carbon::now()->format('Y-m'))
-                    ->persistent()
                     ->query(function (Builder $query, array $data) {
                         if (!empty($data['value'])) {
                             $date = Carbon::createFromFormat('Y-m', $data['value']);
@@ -203,7 +202,8 @@ class AppointmentResource extends Resource
                 Tables\Actions\ForceDeleteAction::make(),
                 Tables\Actions\RestoreAction::make(),
             ])
-            ->bulkActions([]);
+            ->bulkActions([])
+            ->persistFiltersInSession();
     }
 
     public static function getRelations(): array
