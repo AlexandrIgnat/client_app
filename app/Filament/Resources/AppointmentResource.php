@@ -141,7 +141,7 @@ class AppointmentResource extends Resource
                         ->limit(30)
                         ->toggleable(isToggledHiddenByDefault: true),
                 ])
-
+            ->defaultPaginationPageOption(50)
             ->groups([
                 Group::make('start_time')
                     ->label('День недели')
