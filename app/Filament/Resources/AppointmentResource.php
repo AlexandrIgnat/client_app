@@ -67,80 +67,84 @@ class AppointmentResource extends Resource
     public static function table(Table $table): Table
     {
         return $table
-               ->header(function (Table $table) {
-            // Получаем состояние фильтров через Livewire компонент
-            $livewire = $table->getLivewire();
-            $filterState = $livewire->tableFilters;
+            ->header(function (Table $table) {
+                $livewire = $table->getLivewire();
+                $filterState = $livewire->tableFilters;
 
-            // Получаем выбранный месяц
-            $selectedMonth = $filterState['month']['value'] ?? now()->format('Y-m');
-            $date = Carbon::createFromFormat('Y-m', $selectedMonth);
+                // Получаем значения из обоих фильтров
+                $selectedMonth = $filterState['month']['value'] ?? null;
+                $from = $filterState['date_range']['from'] ?? null;
+                $until = $filterState['date_range']['until'] ?? null;
 
-            // Получаем базовый запрос
-            $baseQuery = Appointment::query();
+                $baseQuery = Appointment::query();
+                $labels = [];
 
-            // Применяем фильтр месяца если он есть
-            if (isset($filterState['month']['value'])) {
-                $baseQuery->whereYear('start_time', $date->year)
-                         ->whereMonth('start_time', $date->month);
-            }
+                // Применяем фильтр месяца (если выбран)
+                if ($selectedMonth) {
+                    $date = Carbon::createFromFormat('Y-m', $selectedMonth);
+                    $baseQuery->whereYear('start_time', $date->year)
+                        ->whereMonth('start_time', $date->month);
+                    $labels[] = "Месяц: " . $date->translatedFormat('F Y');
+                }
 
-            // Считаем доход
-            $monthlyIncome = $baseQuery->sum('price');
+                // Применяем фильтр дат (если выбран)
+                if ($from) {
+                    $baseQuery->whereDate('start_time', '>=', $from);
+                    $labels[] = "С: " . Carbon::parse($from)->format('d.m.Y');
+                }
+                if ($until) {
+                    $baseQuery->whereDate('start_time', '<=', $until);
+                    $labels[] = "По: " . Carbon::parse($until)->format('d.m.Y');
+                }
 
-            if (isset($filterState['month']['value'])) {
+                // Считаем доход
+                $income = $baseQuery->sum('price');
+
+                // Формируем красивую строку с описанием того, что сейчас выбрано
+                $labelText = count($labels) > 0 ? implode(' | ', $labels) : 'За все время';
+
                 return new HtmlString(<<<HTML
-                    <div class="flex  align-center items-center justify-center gap-4 p-4 rounded-lg shadow mb-4 text-sm">
-                        <div class="px-4 py-2 bg-amber-50 rounded border border-amber-100">
-                            <div class=" font-medium text-amber-800">Выбранный месяц</div>
-                            <div class=" font-bold text-amber-600">{$date->translatedFormat('F Y')}</div>
-                        </div>
-                        <div class="px-4 py-2 bg-green-50 rounded border border-green-100">
-                            <div class="font-medium text-green-800">Доход за месяц</div>
-                            <div class="font-bold text-green-600">{$monthlyIncome} ₽</div>
-                        </div>
-                    </div>
-                HTML);
-            } else {
-                 return new HtmlString(<<<HTML
                     <div class="flex align-center items-center justify-center gap-4 p-4 rounded-lg shadow mb-4 text-sm">
+                        <div class="px-4 py-2 bg-amber-50 rounded border border-amber-100">
+                            <div class="font-medium text-amber-800">Выбранный период</div>
+                            <div class="font-bold text-amber-600">{$labelText}</div>
+                        </div>
                         <div class="px-4 py-2 bg-green-50 rounded border border-green-100">
-                            <div class="font-medium text-green-800">Всего заработано</div>
-                            <div class="font-bold text-green-600">{$monthlyIncome} ₽</div>
+                            <div class="font-medium text-green-800">Доход</div>
+                            <div class="font-bold text-green-600">{$income} ₽</div>
                         </div>
                     </div>
-                HTML);
-            }
-        })
+                    HTML);
+            })
             ->columns([
 
-                    Tables\Columns\TextColumn::make('start_time')
-                        ->label('Время')
-                        ->dateTime('H:i')
-                        ->weight('medium')
-                        ->color('primary'),
+                Tables\Columns\TextColumn::make('start_time')
+                    ->label('Время')
+                    ->dateTime('H:i')
+                    ->weight('medium')
+                    ->color('primary'),
 
-                    Tables\Columns\TextColumn::make('client.name')
-                        ->label('Клиент')
-                        ->searchable(),
+                Tables\Columns\TextColumn::make('client.name')
+                    ->label('Клиент')
+                    ->searchable(),
 
-                    Tables\Columns\TextColumn::make('payment_status') // Виртуальное поле
-                        ->label('Статус оплаты')
-                        ->badge()
-                        ->state(function ($record) {
-                            return !is_null($record->price) ? 'Оплачено: ' . number_format($record->price, 2) . ' ₽' : 'Не оплачено';
-                        })
-                        ->color(fn (string $state): string => match ($state) {
-                            'Не оплачено' => 'danger',
-                            default => 'success',
-                        })
-                        ->html(),
+                Tables\Columns\TextColumn::make('payment_status') // Виртуальное поле
+                    ->label('Статус оплаты')
+                    ->badge()
+                    ->state(function ($record) {
+                        return !is_null($record->price) ? 'Оплачено: ' . number_format($record->price, 2) . ' ₽' : 'Не оплачено';
+                    })
+                    ->color(fn(string $state): string => match ($state) {
+                        'Не оплачено' => 'danger',
+                        default => 'success',
+                    })
+                    ->html(),
 
-                    Tables\Columns\TextColumn::make('comments')
-                        ->label('Комментарий')
-                        ->limit(30)
-                        ->toggleable(isToggledHiddenByDefault: true),
-                ])
+                Tables\Columns\TextColumn::make('comments')
+                    ->label('Комментарий')
+                    ->limit(30)
+                    ->toggleable(isToggledHiddenByDefault: true),
+            ])
             ->defaultPaginationPageOption(50)
             ->groups([
                 Group::make('start_time')
@@ -151,8 +155,8 @@ class AppointmentResource extends Resource
                     ->collapsible()
                     ->titlePrefixedWithLabel(false)
                     ->orderQueryUsing(
-                    fn (Builder $query, string $direction) => $query->orderBy('start_time', 'desc') // Жестко задаем сортировку
-                ),
+                        fn(Builder $query, string $direction) => $query->orderBy('start_time', 'desc') // Жестко задаем сортировку
+                    ),
             ])
             ->defaultGroup('start_time')
             // ->defaultSort('start_time', 'asc') // Жестко задаем сортировку
@@ -180,6 +184,36 @@ class AppointmentResource extends Resource
                                 ->whereMonth('start_time', $date->month);
                         }
                         return $query;
+                    }),
+                Tables\Filters\Filter::make('date_range')
+                    ->form([
+                        Forms\Components\DatePicker::make('from')
+                            ->label('С даты')
+                            ->native(false), // Красивый календарь
+                        Forms\Components\DatePicker::make('until')
+                            ->label('По дату')
+                            ->native(false),
+                    ])
+                    ->query(function (Builder $query, array $data): Builder {
+                        return $query
+                            ->when(
+                                $data['from'],
+                                fn(Builder $query, $date): Builder => $query->whereDate('start_time', '>=', $date),
+                            )
+                            ->when(
+                                $data['until'],
+                                fn(Builder $query, $date): Builder => $query->whereDate('start_time', '<=', $date),
+                            );
+                    })
+                    ->indicateUsing(function (array $data): array {
+                        $indicators = [];
+                        if ($data['from'] ?? null) {
+                            $indicators['from'] = 'С ' . Carbon::parse($data['from'])->translatedFormat('d.m.Y');
+                        }
+                        if ($data['until'] ?? null) {
+                            $indicators['until'] = 'По ' . Carbon::parse($data['until'])->translatedFormat('d.m.Y');
+                        }
+                        return $indicators;
                     }),
                 Tables\Filters\Filter::make('clients_filter')
                     ->form([
