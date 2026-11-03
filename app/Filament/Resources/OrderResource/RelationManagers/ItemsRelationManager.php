@@ -14,7 +14,7 @@ use Filament\Tables\Table;
 class ItemsRelationManager extends RelationManager
 {
     protected static string $relationship = 'items';
-    protected static ?string $title = 'Список покупок';
+    protected static ?string $title = 'Что нужно купить';
     protected static ?string $modelLabel = 'товар';
     protected static ?string $pluralModelLabel = 'товары';
 
@@ -46,11 +46,11 @@ class ItemsRelationManager extends RelationManager
 
             Forms\Components\TextInput::make('price')
                 ->label('Фактическая цена')->numeric()->prefix('₽')
-                ->helperText('Если пусто, возьмётся цена из товара'),
+                ->helperText('Если пусто, возьмётся из товара'),
 
             Forms\Components\TextInput::make('comment')
                 ->label('Комментарий (объём, вес)')
-                ->placeholder('Например: 2 л, обезжиренное')
+                ->placeholder('Например: 2 л')
                 ->columnSpanFull(),
         ])->columns(3);
     }
@@ -62,7 +62,7 @@ class ItemsRelationManager extends RelationManager
             // Сортируем: сначала те, что нужно купить, потом купленные
             ->modifyQueryUsing(fn($query) => $query->orderBy('is_purchased', 'asc')->orderBy('created_at', 'asc'))
             ->columns([
-                // Переключатель статуса прямо в таблице!
+                // Статус покупки
                 Tables\Columns\ToggleColumn::make('is_purchased')
                     ->label('Куплено')
                     ->updateStateUsing(function ($record, $state) {
@@ -72,35 +72,46 @@ class ItemsRelationManager extends RelationManager
                         ]);
                     }),
 
+                // Главная колонка - название
                 Tables\Columns\TextColumn::make('product.name')
                     ->label('Товар')
                     ->description(fn($record) => $record->product->brand)
-                    ->searchable(),
+                    ->searchable()
+                    ->wrap(), // Разрешаем перенос текста на узких экранах
+
+                // Объединяем количество и единицу измерения
                 Tables\Columns\TextColumn::make('quantity')
-                    ->label('Кол-во'),
-                Tables\Columns\TextColumn::make('unit')
-                    ->label('Ед.'),
+                    ->label('Кол-во')
+                    ->formatStateUsing(fn($record) => $record->quantity . ' ' . ($record->unit ?? '')),
+
+                // Цена за штуку
                 Tables\Columns\TextColumn::make('effective_price')
                     ->label('Цена')
                     ->money('RUB'),
+
+                // Общая сумма позиции (Кол-во * Цена)
+                Tables\Columns\TextColumn::make('effective_total')
+                    ->label('Сумма')
+                    ->getStateUsing(fn($record) => $record->effective_total)
+                    ->money('RUB')
+                    ->toggleable(isToggledHiddenByDefault: true),
+
+                // Второстепенные колонки скрываем по умолчанию
                 Tables\Columns\TextColumn::make('comment')
                     ->label('Комментарий')
                     ->limit(30)
-                    ->toggleable(),
+                    ->toggleable(isToggledHiddenByDefault: true),
+
                 Tables\Columns\TextColumn::make('purchased_at')
                     ->label('Дата покупки')
-                    ->dateTime('d.m.Y H:i')
-                    ->toggleable(),
+                    ->dateTime('d.m.Y')
+                    ->toggleable(isToggledHiddenByDefault: true),
             ])
             ->headerActions([
-                // Кнопка добавления. Сохраняет СРАЗУ в модалке.
                 Tables\Actions\CreateAction::make()
                     ->label('Добавить товар')
-                    ->modalHeading('Новый товар в заказе')
-                    ->modalWidth('xl')
-                    ->after(function ($record) {
-                        // Опционально: можно добавить нотификацию
-                    }),
+                    ->modalHeading('Новый товар в список')
+                    ->modalWidth('xl'),
             ])
             ->actions([
                 Tables\Actions\EditAction::make()

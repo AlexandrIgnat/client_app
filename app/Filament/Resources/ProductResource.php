@@ -67,6 +67,17 @@ class ProductResource extends Resource
             ->actions([
                 Tables\Actions\EditAction::make(),
                 Tables\Actions\DeleteAction::make(),
+                Tables\Actions\Action::make('copy')
+                    ->label('Копировать')
+                    ->icon('heroicon-o-document-duplicate')
+                    ->color('gray')
+                    ->requiresConfirmation()
+                    ->action(function (Product $record) {
+                        // Оставляем только стандартные поля
+                        $copy = $record->replicate(['created_at', 'updated_at']);
+                        $copy->name = $record->name . ' (копия)';
+                        $copy->save();
+                    }),
             ]);
     }
 
