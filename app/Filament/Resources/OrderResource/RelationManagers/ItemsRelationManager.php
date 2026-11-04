@@ -27,8 +27,31 @@ class ItemsRelationManager extends RelationManager
                 ->getOptionLabelFromRecordUsing(fn(Product $r) =>
                 $r->name . ($r->brand ? " ({$r->brand})" : ''))
                 ->searchable()->preload()->required()
+                // 👇 ДОБАВЛЯЕМ ВОЗМОЖНОСТЬ СОЗДАНИЯ ТОВАРА ИЗ МОДАЛЬНОГО ОКНА
+                ->createOptionForm([
+                    Forms\Components\TextInput::make('name')
+                        ->label('Название товара')
+                        ->required()
+                        ->maxLength(255),
+                    Forms\Components\TextInput::make('brand')
+                        ->label('Марка')
+                        ->maxLength(255),
+                    Forms\Components\TextInput::make('unit')
+                        ->label('Ед. изм.')
+                        ->placeholder('л, кг, шт'),
+                    Forms\Components\TextInput::make('default_price')
+                        ->label('Цена по умолчанию')
+                        ->numeric()
+                        ->prefix('₽'),
+                    Forms\Components\Textarea::make('comment')
+                        ->label('Комментарий')
+                        ->placeholder('Например: 2 литра / 5 кг')
+                        ->columnSpanFull(),
+                ])
                 ->live()
                 ->afterStateUpdated(function ($state, Set $set, Get $get) {
+                    // Этот код сработает и при выборе существующего товара,
+                    // и после создания нового через модалку
                     if ($p = Product::find($state)) {
                         $set('unit', $p->unit);
                         if (! $get('price')) {
@@ -59,10 +82,8 @@ class ItemsRelationManager extends RelationManager
     {
         return $table
             ->recordTitleAttribute('id')
-            // Сортируем: сначала те, что нужно купить, потом купленные
             ->modifyQueryUsing(fn($query) => $query->orderBy('is_purchased', 'asc')->orderBy('created_at', 'asc'))
             ->columns([
-                // Статус покупки
                 Tables\Columns\ToggleColumn::make('is_purchased')
                     ->label('Куплено')
                     ->updateStateUsing(function ($record, $state) {
@@ -72,31 +93,25 @@ class ItemsRelationManager extends RelationManager
                         ]);
                     }),
 
-                // Главная колонка - название
                 Tables\Columns\TextColumn::make('product.name')
                     ->label('Товар')
                     ->description(fn($record) => $record->product->brand)
                     ->searchable()
-                    ->wrap(), // Разрешаем перенос текста на узких экранах
+                    ->wrap(),
 
-                // Объединяем количество и единицу измерения
                 Tables\Columns\TextColumn::make('quantity')
                     ->label('Кол-во')
                     ->formatStateUsing(fn($record) => $record->quantity . ' ' . ($record->unit ?? '')),
 
-                // Цена за штуку
                 Tables\Columns\TextColumn::make('effective_price')
                     ->label('Цена')
                     ->money('RUB'),
 
-                // Общая сумма позиции (Кол-во * Цена)
                 Tables\Columns\TextColumn::make('effective_total')
                     ->label('Сумма')
                     ->getStateUsing(fn($record) => $record->effective_total)
-                    ->money('RUB')
-                    ->toggleable(isToggledHiddenByDefault: true),
+                    ->money('RUB'),
 
-                // Второстепенные колонки скрываем по умолчанию
                 Tables\Columns\TextColumn::make('comment')
                     ->label('Комментарий')
                     ->limit(30)

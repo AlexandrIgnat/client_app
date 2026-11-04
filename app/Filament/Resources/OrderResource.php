@@ -44,6 +44,7 @@ class OrderResource extends Resource
             // Компактная секция с итогами
             Forms\Components\Section::make('Итого по списку')
                 ->collapsible()
+                ->collapsed()
                 ->schema([
                     Forms\Components\Placeholder::make('upcoming_total')
                         ->label('🕒 Осталось купить на')
@@ -61,8 +62,6 @@ class OrderResource extends Resource
             ->columns([
                 Tables\Columns\TextColumn::make('name')->label('Название списка')
                     ->searchable()->sortable(),
-                Tables\Columns\TextColumn::make('user.name')->label('Владелец')
-                    ->sortable()->searchable(),
                 Tables\Columns\TextColumn::make('items_count')
                     ->counts('items')->label('Позиций')->sortable(),
                 Tables\Columns\TextColumn::make('upcoming_total')
